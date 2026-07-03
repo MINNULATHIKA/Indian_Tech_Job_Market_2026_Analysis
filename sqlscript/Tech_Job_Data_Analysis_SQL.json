@@ -1,0 +1,17 @@
+{
+	"name": "Tech_Job_Data_Analysis_SQL",
+	"properties": {
+		"content": {
+			"query": "-- Data Analysis\n\n-- Data Aggragation \n-- Data Table,view ,procedure Creation \n-- Save Data in Gold Layer \n\n\n\n--------Creating External Data Source ---------\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources where name = 'GOLD_DATA')\nCREATE EXTERNAL DATA SOURCE GOLD_DATA\nWITH (\n    LOCATION = 'abfss://source-data@indtechjobprojectstorage.dfs.core.windows.net/gold'\n);\n\n\n------create external table ---------\nIF EXISTS (\n    SELECT * FROM sys.external_tables st \n    JOIN  sys.external_data_sources sd \n    ON st.data_source_id = sd.data_source_id AND st.name = 'gold_job_postings' and sd.name = 'GOLD_DATA')\nBEGIN\nDROP EXTERNAL TABLE gold_job_postings\nEND;\nCREATE EXTERNAL TABLE gold_job_postings\nWITH (\n    LOCATION = 'gold_job_postings/',\n    DATA_SOURCE = GOLD_DATA,\n    FILE_FORMAT = MyParquetFormat\n)\nAS\nSELECT\n    job_id,\n    job_title,\n    role_category,\n    company_name,\n    company_rating,\n    company_size_bucket,\n    primary_city,\n    CASE \n        WHEN experience_min_yrs = 0 AND experience_max_yrs = 0 \n        THEN 0\n        ELSE (experience_min_yrs + experience_max_yrs)/2.0\n    END AS avg_experience,\n    salary_midpoint_lpa AS avg_salary,\n  CASE\n    WHEN salary_min_lpa = 0\n         AND salary_max_lpa = 0\n    THEN 'Unknown'\n    WHEN salary_midpoint_lpa/2.0 >= 30\n    THEN 'Yes'\n    ELSE 'No'\nEND AS high_salary,\n    salary_disclosed,\n    work_mode,\n    experience_tier\nFROM OPENROWSET(\n    BULK '/indian_tech_jobs_2026',\n    DATA_SOURCE = 'SILVER_DATA',\n    FORMAT = 'PARQUET'\n) AS [result];\n\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "Ind_Tech_Job_Proj_DB",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

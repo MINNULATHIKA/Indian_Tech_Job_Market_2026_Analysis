@@ -1,0 +1,194 @@
+{
+	"name": "project1",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get Metadata1",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "source_data",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"columnCount",
+						"size",
+						"lastModified"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Get Metadata1",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(activity('Get Metadata1').output.size,0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "fail_activity",
+								"value": "Input file is empty."
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".csv"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "source_data",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "bronze_raw_data",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Tech_Job_Data_Cleaning_SQL",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSynapseAnalytics1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources where name = 'RAW_DATA_BRONZE')\nCREATE EXTERNAL DATA SOURCE RAW_DATA_BRONZE \nWITH(\n    LOCATION = 'abfss://source-data@indtechjobprojectstorage.dfs.core.windows.net/bronze'\n);\n\nALTER DATABASE Ind_Tech_Job_Proj_DB COLLATE Latin1_General_100_CI_AI_SC_UTF8;\n\n\n--------Creating External Data Source ---------\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources where name = 'SILVER_DATA')\nCREATE EXTERNAL DATA SOURCE SILVER_DATA\nWITH (\n    LOCATION = 'abfss://source-data@indtechjobprojectstorage.dfs.core.windows.net/silver'\n);\n\n--------Create External File Format ---------\n\nIF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'MyParquetFormat' )\nCREATE EXTERNAL FILE FORMAT MyParquetFormat\nWITH (\n    FORMAT_TYPE = PARQUET\n);\n\n------create external table ---------\nIF EXISTS (\n    SELECT * FROM sys.external_tables st \n    JOIN  sys.external_data_sources sd \n    ON st.data_source_id = sd.data_source_id AND st.name = 'indian_tech_jobs_2026' and sd.name = 'SILVER_DATA')\nBEGIN\nDROP EXTERNAL TABLE indian_tech_jobs_2026\nEND;\nCREATE EXTERNAL TABLE indian_tech_jobs_2026\nWITH (\n    DATA_SOURCE = SILVER_DATA,\n    FILE_FORMAT = MyParquetFormat,\n    LOCATION = 'indian_tech_jobs_2026/'\n)\nAS\nWITH SourceData AS\n(\n    SELECT *,\n           COALESCE(\n               NULLIF(LOWER(TRIM(job_url)), 'N/A'),\n               LOWER(TRIM(job_title))\n               + '|'\n               + LOWER(TRIM(company_name))\n               + '|'\n               + LOWER(TRIM(location))\n               + '|'\n               + LOWER(TRIM(experience_raw))\n           ) AS dedupe_key\n    FROM OPENROWSET(\n        BULK '/indian_tech_jobs_2026.csv',\n        DATA_SOURCE = 'RAW_DATA_BRONZE',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) as src\n),\nDeduplicated AS\n(\n    SELECT *,\n           ROW_NUMBER() OVER (\n               PARTITION BY dedupe_key\n               ORDER BY job_id\n           ) AS rn\n    FROM SourceData\n)\nSELECT\n    TRY_CAST(TRIM(CAST(job_id AS VARCHAR(50))) AS BIGINT) AS job_id,\n    TRIM(job_title) AS job_title,\n\n    CASE\n        WHEN company_name IN ('.', '-', '', 'N/A')\n            THEN 'unknown'\n        ELSE LOWER(TRIM(company_name))\n    END AS company_name,\n\n    TRY_CAST(company_rating AS FLOAT) AS company_rating,\n\n    CASE\n        WHEN location LIKE '%Bengaluru%' THEN 'Bangalore'\n        WHEN location LIKE '%Bangalore%' THEN 'Bangalore'\n        ELSE location\n    END AS location,\n\n    primary_city,\n    role_category,\n\n    TRY_CAST(experience_min_yrs AS INT) AS experience_min_yrs,\n    TRY_CAST(experience_max_yrs AS INT) AS experience_max_yrs,\n\n    TRY_CAST(salary_min_lpa AS FLOAT) AS salary_min_lpa,\n    TRY_CAST(salary_max_lpa AS FLOAT) AS salary_max_lpa,\n\n    salary_disclosed,\n\n    LOWER(TRIM(skills_required)) AS skills_required,\n\n    TRY_CAST(skills_count AS INT) AS skills_count,\n\n    work_mode,\n    company_size_bucket,\n\n    TRY_CAST(scraped_at AS DATE) AS scraped_at,\n\n    experience_tier,\n    skill_domain,\n    salary_midpoint_lpa\nFROM Deduplicated\nWHERE rn = 1;\n\n\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Tech_Job_Data_Analysis_SQL",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSynapseAnalytics1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "-- Data Analysis\n\n-- Data Aggragation \n-- Data Table,view ,procedure Creation \n-- Save Data in Gold Layer \n\n\n\n--------Creating External Data Source ---------\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources where name = 'GOLD_DATA')\nCREATE EXTERNAL DATA SOURCE GOLD_DATA\nWITH (\n    LOCATION = 'abfss://source-data@indtechjobprojectstorage.dfs.core.windows.net/gold'\n);\n\n\n------create external table ---------\nIF EXISTS (\n    SELECT * FROM sys.external_tables st \n    JOIN  sys.external_data_sources sd \n    ON st.data_source_id = sd.data_source_id AND st.name = 'gold_job_postings' and sd.name = 'GOLD_DATA')\nBEGIN\nDROP EXTERNAL TABLE gold_job_postings\nEND;\nCREATE EXTERNAL TABLE gold_job_postings\nWITH (\n    LOCATION = 'gold_job_postings/',\n    DATA_SOURCE = GOLD_DATA,\n    FILE_FORMAT = MyParquetFormat\n)\nAS\nSELECT\n    job_id,\n    job_title,\n    role_category,\n    company_name,\n    company_rating,\n    company_size_bucket,\n    location,\n    primary_city,\n    experience_min_yrs,\n    experience_max_yrs,\n    CASE \n        WHEN experience_min_yrs = 0 AND experience_max_yrs = 0 \n        THEN 0\n        ELSE (experience_min_yrs + experience_max_yrs)/2.0\n    END AS avg_experience,\n    salary_min_lpa,\n    salary_max_lpa,\n    salary_midpoint_lpa AS avg_salary,\n  CASE\n    WHEN salary_min_lpa = 0\n         AND salary_max_lpa = 0\n    THEN 'Unknown'\n    WHEN salary_midpoint_lpa/2.0 >= 30\n    THEN 'Yes'\n    ELSE 'No'\nEND AS high_salary,\n    salary_disclosed,\n    skills_required,\n    skills_count,\n    work_mode,\n    scraped_at,\n    experience_tier,\n    skill_domain\nFROM OPENROWSET(\n    BULK '/indian_tech_jobs_2026',\n    DATA_SOURCE = 'SILVER_DATA',\n    FORMAT = 'PARQUET'\n) AS [result];\n\n\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"variables": {
+			"fail_activity": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-07-03T01:39:28Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,154 @@
+{
+	"name": "source_data",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "indian_tech_jobs_2026.csv",
+				"folderPath": "raw-data",
+				"fileSystem": "source-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "job_id",
+				"type": "String"
+			},
+			{
+				"name": "job_title",
+				"type": "String"
+			},
+			{
+				"name": "company_name",
+				"type": "String"
+			},
+			{
+				"name": "company_rating",
+				"type": "String"
+			},
+			{
+				"name": "location",
+				"type": "String"
+			},
+			{
+				"name": "scraped_city",
+				"type": "String"
+			},
+			{
+				"name": "role_category",
+				"type": "String"
+			},
+			{
+				"name": "experience_raw",
+				"type": "String"
+			},
+			{
+				"name": "experience_min_yrs",
+				"type": "String"
+			},
+			{
+				"name": "experience_max_yrs",
+				"type": "String"
+			},
+			{
+				"name": "salary_raw",
+				"type": "String"
+			},
+			{
+				"name": "salary_min_lpa",
+				"type": "String"
+			},
+			{
+				"name": "salary_max_lpa",
+				"type": "String"
+			},
+			{
+				"name": "salary_disclosed",
+				"type": "String"
+			},
+			{
+				"name": "skills_required",
+				"type": "String"
+			},
+			{
+				"name": "skills_count",
+				"type": "String"
+			},
+			{
+				"name": "job_description",
+				"type": "String"
+			},
+			{
+				"name": "posted_date_raw",
+				"type": "String"
+			},
+			{
+				"name": "work_mode",
+				"type": "String"
+			},
+			{
+				"name": "company_size_bucket",
+				"type": "String"
+			},
+			{
+				"name": "job_url",
+				"type": "String"
+			},
+			{
+				"name": "data_source",
+				"type": "String"
+			},
+			{
+				"name": "scraped_at",
+				"type": "String"
+			},
+			{
+				"name": "salary_tier",
+				"type": "String"
+			},
+			{
+				"name": "experience_tier",
+				"type": "String"
+			},
+			{
+				"name": "is_senior",
+				"type": "String"
+			},
+			{
+				"name": "primary_city",
+				"type": "String"
+			},
+			{
+				"name": "skill_domain",
+				"type": "String"
+			},
+			{
+				"name": "salary_midpoint_lpa",
+				"type": "String"
+			},
+			{
+				"name": "days_since_posted",
+				"type": "String"
+			},
+			{
+				"name": "is_fresher_friendly",
+				"type": "String"
+			},
+			{
+				"name": "salary_negotiable",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}
