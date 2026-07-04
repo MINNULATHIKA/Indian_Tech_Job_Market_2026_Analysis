@@ -1,0 +1,63 @@
+{
+	"name": "Gold_ExTable_Drop_NoteBook",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "DATAPOOL",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "5ef7bf14-0d6c-4470-94d0-676d8ed7ea64"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/e8dfa68d-deea-48b1-ad45-9b4a6e11bd73/resourceGroups/Indian_tech_job_project_resource_group/providers/Microsoft.Synapse/workspaces/indian-tech-job-project-synapse/bigDataPools/DATAPOOL",
+				"name": "DATAPOOL",
+				"type": "Spark",
+				"endpoint": "https://indian-tech-job-project-synapse.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/DATAPOOL",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"mssparkutils.fs.rm(\n",
+					"    \"abfss://source-data@indtechjobprojectstorage.dfs.core.windows.net/gold/gold_job_postings\",\n",
+					"    True\n",
+					")"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
