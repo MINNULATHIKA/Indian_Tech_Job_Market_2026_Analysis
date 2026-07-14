@@ -21,6 +21,8 @@ Bronze Layer → Raw data ingestion from CSV into ADLS Gen2
 Silver Layer → Data cleaning, transformation, and feature engineering using Synapse SQL    
 Gold Layer → Business-ready star schema using Synapse SQL  
 
+<img width="940" height="348" alt="image" src="https://github.com/user-attachments/assets/4ef47563-7044-4192-a03d-7ae657b50b1c" />
+
 ---
 
 ##  Tech Stack
